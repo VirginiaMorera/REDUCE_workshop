@@ -14,3 +14,10 @@ install.packages("terra")
 install.packages("tidyterra")
 install.packages("patchwork")
 install.packages("sf")
+install.packages("rnaturalearth")
+install.packages("rnaturalearthdata")
+install.packages("reshape")
+install.packages("predicts")
+
+# other packages 
+devtools::install_github('cjcarlson/embarcadero')
