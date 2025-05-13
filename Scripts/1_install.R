@@ -18,6 +18,8 @@ install.packages("rnaturalearth")
 install.packages("rnaturalearthdata")
 install.packages("reshape")
 install.packages("predicts")
-
+install.packages("corrplot")
+install.packages("GGally")
+install.packages("gstat")
 # other packages 
 devtools::install_github('cjcarlson/embarcadero')
