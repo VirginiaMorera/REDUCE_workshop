@@ -1,0 +1,29 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <Description>BO_chlomean_lonlat</Description>
+    <Metadata>
+      <MDI key="STATISTICS_MINIMUM">0.046639997512102</MDI>
+      <MDI key="STATISTICS_MAXIMUM">22.88191986084</MDI>
+      <MDI key="STATISTICS_MEAN">-9999</MDI>
+      <MDI key="STATISTICS_STDDEV">-9999</MDI>
+    </Metadata>
+  </PAMRasterBand>
+  <PAMRasterBand band="2">
+    <Description>BO_salinity_lonlat</Description>
+    <Metadata>
+      <MDI key="STATISTICS_MINIMUM">25.110359191895</MDI>
+      <MDI key="STATISTICS_MAXIMUM">37.193599700928</MDI>
+      <MDI key="STATISTICS_MEAN">-9999</MDI>
+      <MDI key="STATISTICS_STDDEV">-9999</MDI>
+    </Metadata>
+  </PAMRasterBand>
+  <PAMRasterBand band="3">
+    <Description>BO_sstmean_lonlat</Description>
+    <Metadata>
+      <MDI key="STATISTICS_MINIMUM">0.1836000084877</MDI>
+      <MDI key="STATISTICS_MAXIMUM">26.302520751953</MDI>
+      <MDI key="STATISTICS_MEAN">-9999</MDI>
+      <MDI key="STATISTICS_STDDEV">-9999</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>
