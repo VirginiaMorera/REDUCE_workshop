@@ -58,9 +58,9 @@ m1<- glm(pres ~ Chl + Sal + SST,
 summary(m1)
 
 ## 2.2 Predict ####
-pglm<-predict(covars,
-              m1,
-              type='response')
+pglm <- predict(covars,
+                m1,
+                type='response')
 
 ggplot() + 
   geom_spatraster(data = pglm, aes(fill = lyr1)) + 
