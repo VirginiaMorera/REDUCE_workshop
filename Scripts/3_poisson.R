@@ -96,7 +96,13 @@ pred2 <- predict(m2, newdata = newdf,
 
 ggplot() + 
   gg(data = pred2, aes(fill = q0.5), geom = "tile") +
+  geom_sf(data = gorillas_sf$nests, alpha = 0.5) + 
   scale_fill_viridis_c() +
+  theme_bw() + 
+
+ggplot() + 
+  geom_spatraster(data = covars, aes(fill = vegetation)) + 
+  scale_fill_viridis_c() + 
   theme_bw()
 
 ## 3.3 Model with  spde ####
@@ -104,7 +110,7 @@ ggplot() +
 ### Define SPDE priors ####
 
 pcmatern <- inla.spde2.pcmatern(mesh_better, 
-                                prior.range = c(2, 0.1),                                
+                                prior.range = c(1, 0.01),                                
                                 prior.sigma = c(1, 0.01)) 
 
 ### Run model ####
@@ -149,8 +155,8 @@ ggplot() +
 ggplot() + 
   gg(data = pred3.1, aes(fill = q0.5), geom = "tile") +
   scale_fill_viridis_c() +
-  # geom_sf(data = gorillas_sf$nests) +
-  # geom_sf(data = gorillas_sf$plotsample$nests, col = "orange") +
+  # geom_sf(data = gorillas_sf$nests, alpha = 0.5) +
+  geom_sf(data = gorillas_sf$plotsample$counts, col = "orange", aes(size = count)) +
   theme_bw() + ggtitle("SPDE effect")
 
 

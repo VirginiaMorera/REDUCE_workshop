@@ -38,12 +38,12 @@ ggplot() +
 
 ## 2.1 Setting up spde parameters ####
 
-matern <- inla.spde2.pcmatern(mesh, 
+matern <- inla.spde2.pcmatern(shrimp$mesh, 
                               # alpha = 3/2,
                               prior.range = c(60, 0.1),
                               prior.sigma = c(0.2, 0.1))
 
-maternB <- inla.spde2.pcmatern(mesh, 
+maternB <- inla.spde2.pcmatern(shrimp$mesh,
                               # alpha = 3/2,
                               prior.range = c(100, 0.1),
                               prior.sigma = c(2, 0.1))
@@ -82,8 +82,11 @@ newdf <- fm_pixels(shrimp$mesh,
                    mask = boundary,
                    format = "sf")
 
-fish.intensity <- predict(fit, newdf, ~ exp(spde + Intercept))
+fish.intensity <- predict(fit, newdf, ~ exp(spde + Intercept + Eff.depth + 
+                                            lgcpIntercept + spdeB + scaling))
 
 ggplot() +
   gg(fish.intensity, aes(fill = q0.5), geom = "tile") +
-  gg(shrimp$hauls, size = 0.5)
+  gg(shrimp$hauls, size = 0.5) + 
+  scale_fill_viridis_c() + 
+  theme_bw()
