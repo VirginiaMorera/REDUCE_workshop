@@ -81,11 +81,14 @@ model_df <- bind_rows(pres, abs) %>%
 
 # 2. Run model  ####
 
-# Select needed covars
+# 2.1 Select needed covars ####
 xvars <- names(model_df)[c(3,4,5)]
   
+# 2.2 Run model and step-wise variable selection in one step ####
+# pick better values for iterations and steps
+
 sdm <-bart.step(x.data = model_df[,xvars],
-                y.data = model_df[,"pres"],
+                y.data = model_df %>% select(pres),
                 full = TRUE,
                 iter.step = 10, 
                 iter.plot = 10, 
@@ -94,24 +97,37 @@ summary(sdm)
 
 # 3. Obtain outputs  ####
 
+## 3.1 Predicted presence probability ####
 prediction <- predict(object = sdm,
                       x.layers = raster::stack(covars),
-                      quantiles =c(0.025, 0.975),
+                      quantiles =c(0.025, 0.5, 0.975),
                       splitby = 20,
                       quiet = TRUE)
+# plot prediction
 plot(prediction)
-names(prediction) <- c("Mean", "q2.5%", "q97.5%")
+names(prediction) <- c("Mean", "q2.5%", "median", "q97.5%")
 prediction <- rast(prediction)
 plot(prediction)
 
-## Variable importance ####
+# plot binary pres/absence model 
+mean_pred <- prediction$Mean
 
-#' We can now generate a plot of the importance of the included variables
+# here use cutoff value from model summary to optimise, or pick a value according to your project goal
+mean_pred <- mean_pred %>% 
+  mutate(Mean_bin = if_else(Mean > 0.5477886 , 1, 0))
+
+ggplot() + 
+  geom_spatraster(data = mean_pred, aes(fill = Mean_bin))  + 
+  scale_fill_viridis_c()  + 
+  theme_bw() + 
+  coord_equal()
+
+## 3.2 Variable importance ####
 
 varimp <- varimp(sdm, plots = T)
 
 
-## Partial response ####
+## 3.3 Partial response ####
 
 partial_plots <- partial(sdm,
                          trace = FALSE,
@@ -125,10 +141,12 @@ partial_plots[[1]] + partial_plots[[2]] +
   plot_layout(ncol = 2)
 saveRDS(partial_plots, file = "Data/Partial_plots.RDS")
 
+## 3.4 2D partial response ####
 p <- pd2bart(sdm,
              xind = c("bati", "sst"),
              pl = TRUE)
 
+## 3.5 Spatial partial response ####
 sp.dep.sst <- spartial(sdm, stack(covars), x.vars = 'sst', equal = TRUE)
 
 plot(rast(sp.dep.sst))
