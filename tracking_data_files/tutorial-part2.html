@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.42">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="David March">
+<meta name="dcterms.date" content="2025-05-15">
+
+<title>Habitat modeling using marine animal telemetry</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="tutorial-part2_files/libs/clipboard/clipboard.min.js"></script>
+<script src="tutorial-part2_files/libs/quarto-html/quarto.js"></script>
+<script src="tutorial-part2_files/libs/quarto-html/popper.min.js"></script>
+<script src="tutorial-part2_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="tutorial-part2_files/libs/quarto-html/anchor.min.js"></script>
+<link href="tutorial-part2_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="tutorial-part2_files/libs/quarto-html/quarto-syntax-highlighting-2f5df379a58b258e96c21c0638c20c03.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="tutorial-part2_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="tutorial-part2_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="tutorial-part2_files/libs/bootstrap/bootstrap-a63784e7e0960fe467617653ef8e2628.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="tutorial-part2_files/libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet">
+<script src="tutorial-part2_files/libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">1</span> Introduction</a></li>
+  <li><a href="#setup-environment" id="toc-setup-environment" class="nav-link" data-scroll-target="#setup-environment"><span class="header-section-number">2</span> Setup Environment</a></li>
+  <li><a href="#habitat-modeling-methods" id="toc-habitat-modeling-methods" class="nav-link" data-scroll-target="#habitat-modeling-methods"><span class="header-section-number">3</span> Habitat modeling methods</a>
+  <ul class="collapse">
+  <li><a href="#import-gridded-data-with-environmental-information" id="toc-import-gridded-data-with-environmental-information" class="nav-link" data-scroll-target="#import-gridded-data-with-environmental-information"><span class="header-section-number">3.1</span> Import gridded data with environmental information</a>
+  <ul class="collapse">
+  <li><a href="#exercise-2-1" id="toc-exercise-2-1" class="nav-link" data-scroll-target="#exercise-2-1"><span class="header-section-number">3.1.1</span> Exercise 2-1</a></li>
+  </ul></li>
+  <li><a href="#random-sample-of-absences-to-get-a-11-ratio" id="toc-random-sample-of-absences-to-get-a-11-ratio" class="nav-link" data-scroll-target="#random-sample-of-absences-to-get-a-11-ratio"><span class="header-section-number">3.2</span> Random sample of absences to get a 1:1 ratio</a></li>
+  <li><a href="#exploratory-data-analysis" id="toc-exploratory-data-analysis" class="nav-link" data-scroll-target="#exploratory-data-analysis"><span class="header-section-number">3.3</span> Exploratory data analysis</a>
+  <ul class="collapse">
+  <li><a href="#exercise-2-2" id="toc-exercise-2-2" class="nav-link" data-scroll-target="#exercise-2-2"><span class="header-section-number">3.3.1</span> Exercise 2-2</a></li>
+  </ul></li>
+  <li><a href="#transform-variables" id="toc-transform-variables" class="nav-link" data-scroll-target="#transform-variables"><span class="header-section-number">3.4</span> Transform variables</a></li>
+  <li><a href="#collinearity-of-predictors" id="toc-collinearity-of-predictors" class="nav-link" data-scroll-target="#collinearity-of-predictors"><span class="header-section-number">3.5</span> Collinearity of predictors</a></li>
+  <li><a href="#explore-environmental-data-differences-between-observed-and-simulated-data" id="toc-explore-environmental-data-differences-between-observed-and-simulated-data" class="nav-link" data-scroll-target="#explore-environmental-data-differences-between-observed-and-simulated-data"><span class="header-section-number">3.6</span> Explore environmental data differences between observed and simulated data</a></li>
+  <li><a href="#split-data-into-training-and-testing-datasets" id="toc-split-data-into-training-and-testing-datasets" class="nav-link" data-scroll-target="#split-data-into-training-and-testing-datasets"><span class="header-section-number">3.7</span> Split data into training and testing datasets</a></li>
+  <li><a href="#model-fiting" id="toc-model-fiting" class="nav-link" data-scroll-target="#model-fiting"><span class="header-section-number">3.8</span> Model fiting</a>
+  <ul class="collapse">
+  <li><a href="#maxent" id="toc-maxent" class="nav-link" data-scroll-target="#maxent"><span class="header-section-number">3.8.1</span> MaxEnt</a></li>
+  <li><a href="#boosted-regression-trees" id="toc-boosted-regression-trees" class="nav-link" data-scroll-target="#boosted-regression-trees"><span class="header-section-number">3.8.2</span> Boosted Regression Trees</a></li>
+  </ul></li>
+  <li><a href="#model-prediction" id="toc-model-prediction" class="nav-link" data-scroll-target="#model-prediction"><span class="header-section-number">3.9</span> Model prediction</a></li>
+  <li><a href="#model-evaluation" id="toc-model-evaluation" class="nav-link" data-scroll-target="#model-evaluation"><span class="header-section-number">3.10</span> Model evaluation</a></li>
+  </ul></li>
+  <li><a href="#accessibility-models" id="toc-accessibility-models" class="nav-link" data-scroll-target="#accessibility-models"><span class="header-section-number">4</span> Accessibility models</a>
+  <ul class="collapse">
+  <li><a href="#accessibility-to-the-colony" id="toc-accessibility-to-the-colony" class="nav-link" data-scroll-target="#accessibility-to-the-colony"><span class="header-section-number">4.1</span> Accessibility to the colony</a></li>
+  <li><a href="#model-fitting" id="toc-model-fitting" class="nav-link" data-scroll-target="#model-fitting"><span class="header-section-number">4.2</span> Model fitting</a></li>
+  <li><a href="#combining-habitat-and-accessibility-models" id="toc-combining-habitat-and-accessibility-models" class="nav-link" data-scroll-target="#combining-habitat-and-accessibility-models"><span class="header-section-number">4.3</span> Combining habitat and accessibility models</a>
+  <ul class="collapse">
+  <li><a href="#exercise-2-3" id="toc-exercise-2-3" class="nav-link" data-scroll-target="#exercise-2-3"><span class="header-section-number">4.3.1</span> Exercise 2-3</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Habitat modeling using marine animal telemetry</h1>
+<p class="subtitle lead">Part 2 - Habitat modeling</p>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Author</div>
+  <div class="quarto-title-meta-heading">Affiliation</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">David March <a href="mailto:david.march@uv.es" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Cavanilles Institute for Biodiversity and Evolutionary Biology, University of Valencia
+          </p>
+      </div>
+  </div>
+
+<div class="quarto-title-meta">
+
+      
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">May 15, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Introduction</h1>
+<p>This tutorial is aimed to provide an introductory overview on species distribution modeling using <strong><em>R</em></strong> programming language, with a particular focus on marine animal tracking data. Therefore, the course covers specific aspects of marine environmental data and habitat restricted areas. It also considers the particularities of working with telemetry data, including issues such as pseudo-replication and autocorrelation.</p>
+<p>Here, you will learn how to use RStudio to:</p>
+<ul>
+<li><p>Prepare adequate ratio of presence/absence data for your analysis</p></li>
+<li><p>Conduct Exploratory Data Analysis of the environmental data</p></li>
+<li><p>Model fitting</p></li>
+<li><p>Model prediction</p></li>
+<li><p>Model evaluation</p></li>
+</ul>
+</section>
+<section id="setup-environment" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Setup Environment</h1>
+<p>If you have completed part 1, you will already have the system ready for this part.</p>
+<ol type="1">
+<li>Load all the packages required</li>
+</ol>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(<span class="st">"raster"</span>, <span class="st">"sf"</span>, <span class="st">"lubridate"</span>, <span class="st">"ggplot2"</span>, <span class="st">"rnaturalearth"</span>, <span class="st">"rnaturalearthdata"</span>, <span class="st">"dplyr"</span>, <span class="st">"move"</span>, <span class="st">"data.table"</span>, <span class="st">"splitstackshape"</span>, <span class="st">"Hmisc"</span>, <span class="st">"dismo"</span>, <span class="st">"scam"</span>, <span class="st">"tidyr"</span>, <span class="st">"egg"</span>, <span class="st">"gifski"</span>, <span class="st">"av"</span>, <span class="st">"gganimate"</span>, <span class="st">"foreach"</span>, <span class="st">"stringr"</span>, <span class="st">"groupdata2"</span>,  <span class="st">"reshape2"</span>, <span class="st">"gbm"</span>, <span class="st">"devtools"</span>, <span class="st">"rJava"</span>, <span class="st">"animalsensor"</span>, <span class="st">"availability"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ol start="2" type="1">
+<li>Source custom functions</li>
+</ol>
+<p>These custom functions were developed in <a href="https://doi.org/10.1038/s41598-021-01700-w">March et al.&nbsp;(2021)</a></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"R/fun_habitat.R"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="habitat-modeling-methods" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Habitat modeling methods</h1>
+<p>In this section, we are going to work with a more complete dataset, which has already been processed and extracted environmental data on a daily basis.</p>
+<section id="import-gridded-data-with-environmental-information" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="import-gridded-data-with-environmental-information"><span class="header-section-number">3.1</span> Import gridded data with environmental information</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Import tracking data</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/caledw-grid.csv"</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Show first rows</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(data)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># set names of the environmental variables</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>vars <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"BAT"</span>, <span class="st">"SLP"</span>, <span class="st">"SST"</span>, <span class="st">"SAL"</span>, <span class="st">"MLD"</span>, <span class="st">"SSH"</span>, <span class="st">"CHL"</span>, <span class="st">"WSPEED"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="exercise-2-1" class="level3" data-number="3.1.1">
+<h3 data-number="3.1.1" class="anchored" data-anchor-id="exercise-2-1"><span class="header-section-number">3.1.1</span> Exercise 2-1</h3>
+<ul>
+<li>How many individuals contain this dataset?</li>
+<li>What is the current ratio between presence and absences?</li>
+</ul>
+</section>
+</section>
+<section id="random-sample-of-absences-to-get-a-11-ratio" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="random-sample-of-absences-to-get-a-11-ratio"><span class="header-section-number">3.2</span> Random sample of absences to get a 1:1 ratio</h2>
+<p>For machine-learning approaches it is recommended to use a 1:1 ratio</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># presences</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>presences <span class="ot">&lt;-</span> <span class="fu">filter</span>(data, occ<span class="sc">==</span><span class="dv">1</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>n_occ <span class="ot">&lt;-</span> <span class="fu">nrow</span>(presences)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"># absences</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>absences <span class="ot">&lt;-</span> <span class="fu">filter</span>(data, occ<span class="sc">==</span><span class="dv">0</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>abs_prop <span class="ot">&lt;-</span> <span class="fu">nrow</span>(presences)<span class="sc">/</span><span class="fu">nrow</span>(absences)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>absences <span class="ot">&lt;-</span> <span class="fu">stratified</span>(absences, <span class="fu">c</span>(<span class="st">"organismID"</span>), abs_prop)</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co"># combine presence-absences</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(presences, absences)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># check number of occurrence per type</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(data<span class="sc">$</span>occ)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="exploratory-data-analysis" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="exploratory-data-analysis"><span class="header-section-number">3.3</span> Exploratory data analysis</h2>
+<p>First, we will check for missing data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Select columns with environmental data</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>selEnv <span class="ot">&lt;-</span> data <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(vars)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># missing data plot for environmental variables</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_Missing</span>(selEnv)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="exercise-2-2" class="level3" data-number="3.3.1">
+<h3 data-number="3.3.1" class="anchored" data-anchor-id="exercise-2-2"><span class="header-section-number">3.3.1</span> Exercise 2-2</h3>
+<ul>
+<li>Which variable contains missing data? What is the percentage of missing data for this variable?</li>
+</ul>
+</section>
+</section>
+<section id="transform-variables" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="transform-variables"><span class="header-section-number">3.4</span> Transform variables</h2>
+<p>When environmental drivers present skewed distribution it is recommended to log-transform them. Here, we will show how to log-transform CHL. It is important to consider that this transformation has been conducted for predicting the model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># log-transform</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>CHL <span class="ot">&lt;-</span> <span class="fu">log1p</span>(data<span class="sc">$</span>CHL)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># histogram of CHL</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(data<span class="sc">$</span>CHL)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="collinearity-of-predictors" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="collinearity-of-predictors"><span class="header-section-number">3.5</span> Collinearity of predictors</h2>
+<p>Although collinearity between environmental variables does not affect machine-learning predictions, it can affect the interpretation of the model. Therefore, we will assess collinearity among variables calculating the Spearman pairwise correlation coefficient.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calculate correlations using Spearman and clustering analysis</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>v <span class="ot">&lt;-</span> <span class="fu">as.formula</span>(<span class="fu">paste</span>(<span class="st">"~"</span>, vars, <span class="at">collapse=</span><span class="st">"+"</span>))</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">varclus</span>(v, <span class="at">similarity =</span> <span class="fu">c</span>(<span class="st">"spearman"</span>),<span class="at">data =</span> data), <span class="at">cex =</span>.<span class="dv">8</span>) <span class="co"># plot cluster</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>All predictors are uncorrelated (Spearman correlations &lt;0.7), therefore none of them is discarded.</p>
+</section>
+<section id="explore-environmental-data-differences-between-observed-and-simulated-data" class="level2" data-number="3.6">
+<h2 data-number="3.6" class="anchored" data-anchor-id="explore-environmental-data-differences-between-observed-and-simulated-data"><span class="header-section-number">3.6</span> Explore environmental data differences between observed and simulated data</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="do">## Explore distribution of data per variables in both observed and simulated</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># convert to data.frame</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>type <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>type[data<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="st">"Observed"</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>type[data<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">0</span>] <span class="ot">&lt;-</span> <span class="st">"Simulated"</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co"># convert from wide to long format</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>data_long <span class="ot">&lt;-</span> reshape2<span class="sc">::</span><span class="fu">melt</span>(data, <span class="at">id.vars=</span><span class="fu">c</span>(<span class="st">"type"</span>),<span class="at">measure.vars=</span>vars)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="co"># set factors to control order of layers</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>data_long<span class="sc">$</span>type <span class="ot">&lt;-</span> <span class="fu">factor</span>(data_long<span class="sc">$</span>type, <span class="at">levels=</span><span class="fu">c</span>(<span class="st">"Simulated"</span>, <span class="st">"Observed"</span>))</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># plot</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(data_long, <span class="fu">aes</span>(<span class="at">x=</span>value, <span class="at">fill=</span>type)) <span class="sc">+</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">color=</span><span class="st">"#e9ecef"</span>, <span class="at">alpha=</span><span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(variable<span class="sc">~</span>., <span class="at">scales=</span><span class="st">"free"</span>, <span class="at">ncol=</span><span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">""</span>, <span class="at">y =</span> <span class="st">"Density"</span>) <span class="sc">+</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>,</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>        <span class="at">legend.title =</span> <span class="fu">element_blank</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="split-data-into-training-and-testing-datasets" class="level2" data-number="3.7">
+<h2 data-number="3.7" class="anchored" data-anchor-id="split-data-into-training-and-testing-datasets"><span class="header-section-number">3.7</span> Split data into training and testing datasets</h2>
+<p>Here, given that we have a small subset of data we will pick one individual randomly and will use as testing dataset. This means this individual will not be used to fit the model, and then we will test model predictions on this one.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set a seed to reproduce random number</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">134</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># pick a random organism</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>rn <span class="ot">&lt;-</span> <span class="fu">sample</span>(data<span class="sc">$</span>organismID, <span class="dv">1</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="co"># split data</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>train <span class="ot">&lt;-</span> data <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(<span class="sc">!</span>organismID <span class="sc">%in%</span> rn)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>test <span class="ot">&lt;-</span> data <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">filter</span>(organismID <span class="sc">%in%</span> rn)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="model-fiting" class="level2" data-number="3.8">
+<h2 data-number="3.8" class="anchored" data-anchor-id="model-fiting"><span class="header-section-number">3.8</span> Model fiting</h2>
+<p>We will use the <code>dismo</code> package to fit the models. In particular, we will fit a model with MaxEnt and another with Boosted Regression Trees.</p>
+<section id="maxent" class="level3" data-number="3.8.1">
+<h3 data-number="3.8.1" class="anchored" data-anchor-id="maxent"><span class="header-section-number">3.8.1</span> MaxEnt</h3>
+<p>Notes on MaxEnt installation <a href="https://cran.r-project.org/web/packages/wallace/readme/README.html">here</a></p>
+<p>http://www.java.com for information on installing Java.</p>
+<p>https://github.com/shandongfx/workshop_maxent_R/blob/master/code/Appendix1_case_study.md</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Separate response variable and covariates</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>response <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">select</span>(train, occ)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>covar <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">select</span>(train, vars)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Fit model</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>me <span class="ot">&lt;-</span> <span class="fu">maxent</span>(covar, response)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Plot variable contribution</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot variable contribution</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(me)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Plot response curves</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot response curves</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">response</span>(me)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="boosted-regression-trees" class="level3" data-number="3.8.2">
+<h3 data-number="3.8.2" class="anchored" data-anchor-id="boosted-regression-trees"><span class="header-section-number">3.8.2</span> Boosted Regression Trees</h3>
+<p>We used the “dismo” package in R to fit the BRT using a Bernoulli family, appropriate to the response variable of presence (1) and absence (0).</p>
+<p>We will use individual birds as folds in a leave-one-out cross-validation, meaning that all data from a given bird (both observed and simulated locations) were excluded from the training dataset and used to validate the model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># set number of folds</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>n.folds <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">unique</span>(train<span class="sc">$</span>organismID))</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co"># create folds</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>train<span class="sc">$</span>organismID <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(train<span class="sc">$</span>organismID)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>f <span class="ot">&lt;-</span> <span class="fu">fold</span>(<span class="at">data =</span> train, <span class="at">id_col =</span> <span class="st">"organismID"</span>, <span class="at">method =</span> <span class="st">"n_dist"</span>, <span class="at">k =</span> n.folds)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="co"># prepare data</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>train <span class="ot">&lt;-</span> f <span class="sc">%&gt;%</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">rename</span>(<span class="at">fold =</span> .folds) <span class="sc">%&gt;%</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(<span class="at">fold =</span> <span class="fu">as.numeric</span>(fold)) <span class="sc">%&gt;%</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Fit the model using leave-one-out cross-validation. Note that a more detailed analysis should require the optimization of the different parameters: tree complexity, the learning rate (shrinkage) and the bag fraction (proportion of data randomly selected at each iteration).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>brt <span class="ot">&lt;-</span> <span class="fu">gbm.step</span>(<span class="at">data=</span>train, <span class="at">gbm.x =</span> vars, <span class="at">gbm.y =</span> <span class="st">"occ"</span>,</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>                            <span class="at">family =</span> <span class="st">"bernoulli"</span>, <span class="at">tree.complexity =</span> <span class="dv">5</span>,</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>                            <span class="at">learning.rate =</span> <span class="fl">0.001</span>, <span class="at">bag.fraction =</span> <span class="fl">0.6</span>,</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>                            <span class="at">fold.vector =</span> train<span class="sc">$</span>fold,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>                            <span class="at">n.folds =</span> <span class="fu">length</span>(<span class="fu">unique</span>(train<span class="sc">$</span>fold)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Plot variable contribution</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(brt)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Plot variable response curves.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gbm.plot</span>(brt, <span class="at">n.plots=</span><span class="dv">8</span>, <span class="at">plot.layout=</span><span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">4</span>), <span class="at">write.title =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>In addition to the default function from <code>dismo</code>, ´ggplot2´ fans can found a great alternative using the <a href="https://github.com/JBjouffray/ggBRT">ggBRT</a> package.</p>
+</section>
+</section>
+<section id="model-prediction" class="level2" data-number="3.9">
+<h2 data-number="3.9" class="anchored" data-anchor-id="model-prediction"><span class="header-section-number">3.9</span> Model prediction</h2>
+<p>Import environmental data for a given day.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import environmental data stack</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>env <span class="ot">&lt;-</span> <span class="fu">stack</span>(<span class="st">"data/20190625_enviro.grd"</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot environmental data</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(env)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="co"># remember to log-transform variables!</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>env<span class="sc">$</span>CHL <span class="ot">&lt;-</span> <span class="fu">log1p</span>(env<span class="sc">$</span>CHL)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Model prediction with MaxEnt</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model prediction</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>me_pred <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(<span class="at">model =</span> me, <span class="at">object =</span> env, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(me_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Model prediction with BRT</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model prediction</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>brt_pred <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(<span class="at">model =</span> brt, <span class="at">object =</span> env, <span class="at">n.trees=</span>brt<span class="sc">$</span>gbm.call<span class="sc">$</span>best.trees, <span class="at">type=</span><span class="st">"response"</span>)</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(brt_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="model-evaluation" class="level2" data-number="3.10">
+<h2 data-number="3.10" class="anchored" data-anchor-id="model-evaluation"><span class="header-section-number">3.10</span> Model evaluation</h2>
+<p>We will use the testing data to evaluate the models</p>
+<p>We will start with MaxEnt</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>me_pred <span class="ot">&lt;-</span> dismo<span class="sc">::</span><span class="fu">predict</span>(<span class="at">x =</span> test, <span class="at">object =</span> me, <span class="at">type =</span> <span class="st">"response"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Unlike BRT, MaxEnt is sensitive to missing data. Given there are two observations with missing CHL, there is an error. We will create a new subset without these two observations.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># subset test</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>test <span class="ot">&lt;-</span> <span class="fu">filter</span>(test, <span class="sc">!</span><span class="fu">is.na</span>(CHL))</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>me_pred <span class="ot">&lt;-</span> dismo<span class="sc">::</span><span class="fu">predict</span>(<span class="at">x =</span> test, <span class="at">object =</span> me, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fu">evaluate</span>(<span class="at">p =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>me_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">1</span>]),</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>              <span class="at">a =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>me_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">0</span>]))</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>e</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="co"># plot evaluation results</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>))</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(e, <span class="st">'ROC'</span>)</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="fu">density</span>(e)</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(e, <span class="at">col=</span><span class="fu">c</span>(<span class="st">'blue'</span>, <span class="st">'red'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Then, we will follow with BRT. Note that the code is slightly difference, since we need to define the number of trees used for the BRT.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>brt_pred <span class="ot">&lt;-</span> gbm<span class="sc">::</span><span class="fu">predict.gbm</span>(<span class="at">newdata =</span> test, <span class="at">object =</span> brt, <span class="at">n.trees=</span>brt<span class="sc">$</span>gbm.call<span class="sc">$</span>best.trees, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fu">evaluate</span>(<span class="at">p =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>brt_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">1</span>]),</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>              <span class="at">a =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>brt_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">0</span>]))</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>e</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a><span class="co"># plot evaluation results</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>))</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(e, <span class="st">'ROC'</span>)</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a><span class="fu">density</span>(e)</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(e, <span class="at">col=</span><span class="fu">c</span>(<span class="st">'blue'</span>, <span class="st">'red'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<ul>
+<li>Which of the two methods has performed better according to the AUC criteria?</li>
+</ul>
+</section>
+</section>
+<section id="accessibility-models" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Accessibility models</h1>
+<p>The habitat modeling approach estimates habitat suitability of a given location based on its environmental characteristics. However, it does not consider the accessibility of a given cell. This is particularly important for central place foragers that get back to their colonies.</p>
+<section id="accessibility-to-the-colony" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="accessibility-to-the-colony"><span class="header-section-number">4.1</span> Accessibility to the colony</h2>
+<p>Here, we will use a generated map of the distance to the colony. To know how to create you own map, you can check the code available from a previous workhop <a href="https://github.com/dmarch/ub-rworkshop2021">here</a></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import distance to colony map</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>dcol <span class="ot">&lt;-</span> <span class="fu">raster</span>(<span class="st">"data/D2COL.tif"</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(dcol)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Then, we create a map of presence/absence. In this case, presence correspond to both observed and pseudo-abansence data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create an absence map</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  rabs <span class="ot">&lt;-</span> dcol</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  rabs[<span class="sc">!</span><span class="fu">is.na</span>(rabs)] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create a presence map with both observed and simulated trips</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  rpres <span class="ot">&lt;-</span> <span class="fu">rasterize</span>(<span class="fu">cbind</span>(train<span class="sc">$</span>longitude, train<span class="sc">$</span>latitude), dcol)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>  rpres <span class="ot">&lt;-</span> rpres<span class="sc">/</span>rpres</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create presence/absence</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  rpa <span class="ot">&lt;-</span> <span class="fu">sum</span>(rpres, rabs, <span class="at">na.rm=</span><span class="cn">TRUE</span>)</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>  rpa <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">mask</span>(rpa, rabs)</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">names</span>(rpa) <span class="ot">&lt;-</span> <span class="st">"OCC"</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(rpa)</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>  <span class="do">## convert to data.frame</span></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">stack</span>(rpa, dcol)</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>  distdf <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="fu">na.omit</span>(<span class="fu">values</span>(s)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="model-fitting" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="model-fitting"><span class="header-section-number">4.2</span> Model fitting</h2>
+<p>We will fitted binomial model with a smooth, monotonic decreasing constraint using the “scam” R package, under the assumption that accessibility should decrease with the distance to the colony.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fitted binomial models with a smooth, monotonic decreasing constraint (see Hindell 2020)</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>scamMod <span class="ot">&lt;-</span> <span class="fu">scam</span>(<span class="at">formula =</span> OCC <span class="sc">~</span> <span class="fu">s</span>(D2COL, <span class="at">bs=</span><span class="st">"mpd"</span>),  <span class="co"># Monotone decreasing P-splines</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">family =</span> binomial,</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>                <span class="at">data =</span> distdf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Predict model</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># predict model</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>access_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(dcol, scamMod, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(access_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="combining-habitat-and-accessibility-models" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="combining-habitat-and-accessibility-models"><span class="header-section-number">4.3</span> Combining habitat and accessibility models</h2>
+<p>Combine MaxEnt prediction with accessibility</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calculate product with accessibility</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>me_acc_pred <span class="ot">&lt;-</span> me_pred <span class="sc">*</span> access_pred</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(me_acc_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="exercise-2-3" class="level3" data-number="4.3.1">
+<h3 data-number="4.3.1" class="anchored" data-anchor-id="exercise-2-3"><span class="header-section-number">4.3.1</span> Exercise 2-3</h3>
+<ul>
+<li>Combine accessibility with the prediction of BRT.</li>
+<li>Evaluate the predictions of BRT and MaxEnt together with accessibility on the testing dataset. Have we improved the predictions?</li>
+</ul>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,0 +1,446 @@
+---
+title: "Habitat modeling using marine animal telemetry"
+author: 
+  - name: David March
+    email: david.march@uv.es
+    affiliation: Cavanilles Institute for Biodiversity and Evolutionary Biology, University of Valencia
+subtitle: Part 1 - Preparing telemetry data and extracting environmental data
+date: 2025-05-15
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-copy: true
+    code-overflow: wrap
+    df-print: paged
+    theme: cosmo
+    css: styles.css  # Optional: if you want to style further
+execute:
+  eval: false
+---
+
+
+
+
+
+
+# Introduction
+
+This tutorial is aimed to provide an introductory overview on species distribution modeling using ***R*** programming language, with a particular focus on marine animal tracking data. Therefore, the course covers specific aspects of marine environmental data and habitat restricted areas. It also considers the particularities of working with telemetry data, including issues such as pseudo-replication and autocorrelation.
+
+
+Here, you will learn how to use RStudio to:
+
+* Prepare marine telemetry data
+
+* Generate absence and background tracks
+
+* Extract environmental data
+
+
+
+# Setup Environment
+
+## Install RStudio
+
+In order to follow this tutorial, you will need to:
+
+1. Install [RStudio Desktop](https://www.rstudio.com/). The Open Source Edition provides a free license for multiple operating systems.
+
+2. Open Rstudio and run the following code to install all required packages:
+
+Install packages from CRAN
+```{r message = FALSE, warning = FALSE, eval = FALSE}
+# install.packages(c("raster", "sf", "lubridate", "ggplot2", "rnaturalearth", "rnaturalearthdata", "dplyr", "move", "data.table", "splitstackshape", "Hmisc", "dismo", "scam", "tidyr", "egg", "gifski", "av", "gganimate", "foreach", "stringr", "groupdata2",  "reshape2", "gbm", "devtools"))
+```
+
+There are additional packages not in CRAN
+
+```{r message = FALSE, warning = FALSE, eval = FALSE}
+#devtools::install_github("dmarch/animalsensor")
+#devtools::install_github("AustralianAntarcticDataCentre/availability")
+#devtools::install_github("TakahiroShimada/SDLfilter")
+```
+
+In case you had a Github HTTP error 401 with bad credentials, it may indicate that you used a github token in the past that has expired. To obtain a new token, follow this steps:
+1. Generate a new token: usethis::create_github_token()
+2. Store the token securely: gitcreds::gitcreds_set()
+3. Confirm the token is stored: gitcreds::gitcreds_get()
+
+
+
+3. Load all the packages required
+
+```{r message = FALSE, warning = FALSE}
+pacman::p_load("raster", "sf", "lubridate", "ggplot2", "rnaturalearth", "rnaturalearthdata", "dplyr", "move", "data.table", "splitstackshape", "Hmisc", "dismo", "scam", "tidyr", "egg", "gifski", "av", "gganimate", "foreach", "stringr", "groupdata2",  "reshape2", "gbm", "devtools", "rJava", "animalsensor", "availability")
+```
+
+4. Source custom functions
+
+These custom functions were developed in [March et al. (2021)](https://doi.org/10.1038/s41598-021-01700-w)
+
+```{r message = FALSE, warning = FALSE}
+source("R/fun_habitat.R")
+```
+
+## Download data
+
+This tutorial uses different sample datasets, which will be introduced later on in this tutorial. First, we will create a new directory `data/` in the current working directory to move the downloaded data to.
+
+
+# Animal tracking data
+
+## Import animal tracking data
+
+The sample dataset includes GPS tracking from the Cape Verde shearwater (Calonectris edwardsii). Raw data has been standardized following Sequeira et al. (2021). In general, tracking data is usually represented by an animal ID, coordinates and time.
+
+```{r message = FALSE, warning = FALSE}
+# Import tracking data
+caledw <- read.csv("data/caledw.csv")
+
+# Show first rows
+head(caledw)
+```
+
+We need to define the time format for future steps. The package `lubridate` is very convenient for these operations. 
+
+```{r message = FALSE, warning = FALSE}
+# parse time
+caledw$time <- parse_date_time(caledw$time, "Ymd HMS")
+```
+
+
+It is important to make and exploratory map to confirm that tracking data is allocated in the right location.
+
+```{r message = FALSE, warning = FALSE}
+# import landmask to used as backgroud
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# plot
+ggplot() +
+  # land mask
+  geom_sf(data = world) +
+  # add tracks
+  geom_path(data = caledw, aes(x = longitude, y = latitude)) +
+  # set spatial bounds
+  coord_sf(xlim = range(caledw$longitude), ylim = range(caledw$latitude), expand=T) +
+  # theme
+  theme_bw()
+```
+
+
+### Excercise 1-1
+
+* How many individuals and trips appear in this dataset?
+* What is the first and last date of the monitoring period?
+* What is the sampling frequency of GPS data (i.e. time between consecutive positions)?
+
+Tip: you can try using the `summarizeTrips()`function from the `animalsensor` package.
+
+
+
+
+## Duplicate records
+
+We will remove near-duplicate positions, defined as animal positions that occurred 2 min or less after an existing position fix from the same animal.
+
+```{r message = FALSE, warning = FALSE}
+
+# Remove near-duplicate positions
+caledw$argosLC <- "G"
+caledw <- filter_dup(data = caledw, step.time = 2/60, step.dist = 0)
+
+```
+
+
+## Speed filter
+
+We remove unrealistic flying speeds (90 km h-1).
+
+```{r message = FALSE, warning = FALSE}
+# Remove spikes as high speeds
+caledw <- filter_speed(caledw, vmax = 90, method = 1)
+
+```
+
+Check again the trajectory after post-processing
+
+
+```{r message = FALSE, warning = FALSE}
+# plot
+ggplot() +
+  # land mask
+  geom_sf(data = world) +
+  # add tracks
+  geom_path(data = caledw, aes(x = longitude, y = latitude)) +
+  geom_point(data = caledw, aes(x=longitude, y=latitude), size=0.5) +
+  # set spatial bounds
+  coord_sf(xlim = range(caledw$longitude), ylim = range(caledw$latitude), expand=T) +
+  # theme
+  theme_bw()
+```
+
+
+
+
+
+## Regularization
+
+Regularization of the tracking data consist on interpolating the trajectory of the animal at regular time intervals. While this step may reduce some fine-scale movement behaviours, it presents several advantages for the habitat modeling:
+* Reduces temporal autocorrelation.
+* For very high-resolution data: reduces amount of data, which could be computationally inefficient.
+* Better aligns with environmental data temporal resolution
+
+
+Here we use GPS data and use a linear interpolation algorithm from `move` package. For Argos data, regularization is often conducted through a state-space-model. Check the `aniMotum` package and March et al. (2021) for an example.
+
+```{r message = FALSE, warning = FALSE}
+
+# list unique trips
+trips <- unique(caledw$tripID)
+
+# convert to move
+m <- move::move(x = caledw$longitude, y = caledw$latitude, time = caledw$time, animal= caledw$tripID, data = caledw)
+
+# interpolate
+tp <- interpolateTime(m, time=as.difftime(1, units="hours"), spaceMethod='greatcircle')
+  
+# create data.frame
+caledwReg <- caledw %>%
+  slice(1) %>%
+  dplyr::select(organismID, tripID) %>%
+  bind_cols(time = tp@timestamps, longitude = tp@coords[,1], latitude = tp@coords[,2])
+
+# detach move package
+# detach(package:move, unload=TRUE)
+```
+
+
+### Exercise 1-2
+
+* Plot the trajectory after the regularization processing
+* What is the percentage of reduction of data? (i.e. 100 * (number of original locations - number of resampled locations) / number of original locations)
+
+
+
+
+# Pseudo-absences
+
+Satellite tracks represent presence only data. In order to use a binomial response in the habitat model (i.e. presence and absence), we will generate pseudo-absences
+
+## Create an ocean mask
+
+First, we will define a custom land mask of the study area to restrict the simulated positions to the sea. We will use a bathymetry layer in TIFF format that has been extracted and post-processed from the GEBCO bathymetry (www.gebco.net).
+
+```{r message = FALSE, warning = FALSE}
+# import environmental dataset
+bat <- raster("data/BAT.tif")
+plot(bat)
+```
+
+The land mask will consist on a raster with two values: 0 (represent the ocean), 1 (represent the land)
+
+```{r message = FALSE, warning = FALSE}
+# select bathymetry
+oceanmask <- bat
+
+# create an ocean mask
+oceanmask[!is.na(oceanmask)] <- 0
+oceanmask[is.na(oceanmask)] <- 1
+
+# plot result
+plot(oceanmask)
+
+```
+
+Note that the resolution of the ocean mask will affect the computing time of the simulations (i.e. the higher resolution the higher computing time). Therefore, it may be convenient to resample your oceanmask at a lower resolution. You can use `aggregate()` from `raster`.  
+
+
+
+## Simulation of tracks
+
+For each simulation, we will fix the first and last location as we are simulating a central-place forager that has to return to the colony. Such simulations recreate the movement characteristics of the original tracks, taking into account their autocorrelations structure (Hazen et al. 2021), but are independent of the underlying environment. 
+
+```{r message = FALSE, warning = FALSE}
+# set simulation parameters
+sim_fix_last <- TRUE  # fix last location
+sim_n <- 10  # number of simulations
+d <- caledwReg  # select data.frame
+oceanmask <- oceanmask
+set.seed(1234)  # set seed to reproduce simulations
+
+# Fit a vector-autoregressive movement model to this filtered track.
+# This model assumes that the x- and y-speeds at time t are a linear function
+# of the speeds at time t-1, plus random noise.
+arfit <- surrogateARModel(d[,c("longitude", "latitude")])
+
+## generate simulations
+data_list <- list()
+
+for (s in 1:sim_n){
+  # Now we can use that fitted model to generate new tracks. 
+  # Simulated track are fixed to the same start always. End points fixed for central-place foragers
+  # Land mask is applied:
+  simu <- surrogateAR(arfit, xs = d[,c("longitude", "latitude")], ts = d[,c("time")], point.check = landMask,
+                      fixed = rep(c(TRUE, FALSE, sim_fix_last), c(1, nrow(d) - 2, 1)),
+                      partial=FALSE)
+  if(is.null(simu) | is.na(simu$xs[1])) break
+  
+  # create data.frame
+  df <- d %>%
+    slice(1) %>%
+    dplyr::select(organismID, tripID) %>%
+    bind_cols(simID = str_pad(s, 3, pad = "0"), time = simu$ts, longitude = simu$xs[,1], latitude = simu$xs[,2])
+  
+  ## append data.frame into list
+  data_list[[s]] <- df
+}
+
+## combine simulations into a single data.frame
+simdf <- rbindlist(data_list)
+head(simdf)
+
+```
+
+
+Plot simulated data and observed
+
+```{r message = FALSE, warning = FALSE}
+# set spatial bounds by combining ranges of simulated and observed tracks
+xl <- range(caledwReg$longitude, simdf$longitude)
+yl <- range(caledwReg$latitude, simdf$latitude)
+
+# plot
+p <- ggplot() +
+  # land mask
+  geom_sf(data=world) +
+  # add simulated tracks
+  geom_path(data = simdf, aes(x = longitude, y = latitude, group = simID), colour = "steelblue") +
+  geom_point(data=simdf, aes(x=longitude, y=latitude), colour="steelblue", shape=21, size=2, stroke = 1, fill="white") +
+  # add observed tracks
+  geom_path(data = caledwReg, aes(x = longitude, y = latitude), color = "red") +
+  geom_point(data=caledwReg, aes(x=longitude, y=latitude), colour="red", shape=21, size=2, stroke = 1, fill="white") +
+  # set spatial bounds
+  coord_sf(xlim = xl, ylim = yl, expand=T) +
+  # theme
+  theme_bw()
+
+p
+```
+
+To have a better understanding of the simulations, we are going to use `gganimate` package to create an animated plot. 
+
+
+```{r message = FALSE, warning = FALSE}
+p + transition_reveal(along = time) +
+  labs(title = "Simulated vs Observed",
+       subtitle = "Date: {round(frame_along, 0)}", x = "Longitude", y ="Latitude")
+```
+
+Note that the 10 simulations start and finish the same date from the colony of the observed trajectory.
+***Caution***: Using `gganimate` may take a long time if you use for larger datasets and longer periods
+
+
+
+## Gridding observed and simulated data
+
+Simulated tracks can generate replication at the same locations of the real track, hence leading to contradictory information in binomial models (i.e. same location and date defined as either presence and absence) and potentially reduce model performance (O’Toole et al. 2021). To reduce the amount of pseudo-replication and prevent overlap between real and simulated tracks, we will grid all presence and pseudo-absence locations per individual at 0.1 degrees on a daily basis and filtered out pseudo-absences that are adjacent to any presence grid cell (i.e. all individuals considered) within a temporal window of 2 days. See March et al. (2021) for an example.
+
+
+```{r message = FALSE, warning = FALSE}
+# Params to generate presence-absence data
+res <- 0.1  # size of spatial bin, in decimal degrees
+temporal_thrs <- 2  # length of temporal bin, in days
+
+# prepare presence and absence data.frame
+pres <- caledwReg %>% mutate(date = as.Date(time))
+abs <- simdf %>% mutate(date = as.Date(time))
+
+# grid presence and absence data
+g <- gridPresAbs(pres, abs, res)
+gpres <- g$gridPres
+gabs <- g$gridAbs
+grid <- g$grid
+
+# filter absence data that overlaps with presence
+# note this step can be time consuming with large datasets (!)
+fgabs <- filterGridAbs(gpres, gabs, grid, temporal_thrs)
+
+# combine presence and absence into a single data.frame
+comb <- rbind(data.frame(gpres), data.frame(fgabs))
+comb <- dplyr::select(comb, organismID, cell, longitude, latitude, date, occ)
+head(comb)
+
+```
+
+
+We can now plot the result of the gridding process
+
+```{r message = FALSE, warning = FALSE}
+# plot gridded presence and absence
+ggplot() +
+  # land mask
+  geom_sf(data=world) +
+  # add points
+  geom_point(data=comb, aes(x=longitude, y=latitude, color=as.factor(occ))) +
+  # set spatial bounds
+  coord_sf(xlim = range(comb$longitude), ylim = range(comb$latitude), expand=T) +
+  # labels
+  labs(color = "Occurrence") +
+  # theme
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+```
+
+# Environmental data
+
+We will not cover the temporal variability in this course. You can check the code from [previous R workshop](https://github.com/dmarch/ub-rworkshop2021) to find how to extract data from spatio-temporal grids.
+
+
+## Extract data
+
+```{r message = FALSE, warning = FALSE}
+
+# import environmental dataset
+env <- stack("data/20190625_enviro.grd")
+plot(env)
+```
+
+### Exercise 1-3
+
+* Can you guess what are the environmental variables?
+
+Tip: You can check [March et al. 2021](https://doi.org/10.1038/s41598-021-01700-w)
+
+
+
+For each gridded location, including presence and pseudo-absence data, we will extract environmental data using the `extract()` function from the `raster` package.
+
+```{r message = FALSE, warning = FALSE}
+# subset gridded data for selected date
+sdata <- comb %>% filter(date == as.Date("2019-06-26"))
+
+# extract environmental data for each observation
+ex <- raster::extract(env, cbind(sdata$longitude, sdata$latitude), buffer = 15000, fun = mean)
+sdata <- bind_cols(sdata, data.frame(ex))
+
+head(sdata)
+
+```
+
+After processing a single trip, then this process can be extended to a larger database. Note that this can be computer intensive for larger datasets and you may require using parallel computing on a server.
+
+
+
+
+# References
+
+* Hazen, E. L. et al. Where did they not go? Considerations for generating pseudo-absences for telemetry-based habitat models. Mov. Ecol. 9, 5 (2021).
+* Jonsen, I. D. et al. Movement responses to environment: Fast inference of variation among southern elephant seals with a mixed effects model. Ecology 100, e02566 (2019).
+* Jonsen, I. D. et al. A continuous-time state-space model for rapid quality control of argos locations from animal-borne tags. Mov. Ecol. 8, 31 (2020).
+* March, D., Drago, M., Gazo, M. et al. Winter distribution of juvenile and sub-adult male Antarctic fur seals (Arctocephalus gazella) along the western Antarctic Peninsula. Sci Rep 11, 22234 (2021). [https://doi.org/10.1038/s41598-021-01700-w](https://doi.org/10.1038/s41598-021-01700-w)
+* O’Toole, M., Queiroz, N., Humphries, N. E., Sims, D. W. & Sequeira, A. M. M. Quantifying effects of tracking data bias on species distribution models. Methods Ecol. Evol. 12, 170–181 (2021).
+* Sequeira, AMM, O'Toole, M, Keates, TR, et al. A standardisation framework for bio-logging data to advance ecological research and conservation. Methods Ecol Evol. 2021; 12: 996– 1007. [https://doi.org/10.1111/2041-210X.13593](https://doi.org/10.1111/2041-210X.13593)
+
+

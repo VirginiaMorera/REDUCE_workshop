@@ -1,0 +1,470 @@
+---
+title: "Habitat modeling using marine animal telemetry"
+author: 
+  - name: David March
+    email: david.march@uv.es
+    affiliation: Cavanilles Institute for Biodiversity and Evolutionary Biology, University of Valencia
+subtitle: Part 2 - Habitat modeling
+date: 2025-05-15
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-copy: true
+    code-overflow: wrap
+    df-print: paged
+    theme: cosmo
+    css: styles.css  # Optional: if you want to style further
+execute:
+  eval: false
+---
+
+
+# Introduction
+
+This tutorial is aimed to provide an introductory overview on species distribution modeling using ***R*** programming language, with a particular focus on marine animal tracking data. Therefore, the course covers specific aspects of marine environmental data and habitat restricted areas. It also considers the particularities of working with telemetry data, including issues such as pseudo-replication and autocorrelation.
+
+
+Here, you will learn how to use RStudio to:
+
+* Prepare adequate ratio of presence/absence data for your analysis
+
+* Conduct Exploratory Data Analysis of the environmental data
+
+* Model fitting
+
+* Model prediction
+
+* Model evaluation
+
+
+
+# Setup Environment
+
+If you have completed part 1, you will already have the system ready for this part.
+
+1. Load all the packages required
+
+```{r message = FALSE, warning = FALSE}
+pacman::p_load("raster", "sf", "lubridate", "ggplot2", "rnaturalearth", "rnaturalearthdata", "dplyr", "move", "data.table", "splitstackshape", "Hmisc", "dismo", "scam", "tidyr", "egg", "gifski", "av", "gganimate", "foreach", "stringr", "groupdata2",  "reshape2", "gbm", "devtools", "rJava", "animalsensor", "availability")
+```
+
+2. Source custom functions
+
+These custom functions were developed in [March et al. (2021)](https://doi.org/10.1038/s41598-021-01700-w)
+
+```{r message = FALSE, warning = FALSE}
+source("R/fun_habitat.R")
+```
+
+
+
+# Habitat modeling methods
+
+In this section, we are going to work with a more complete dataset, which has already been processed and extracted environmental data on a daily basis.
+
+
+## Import gridded data with environmental information
+
+```{r message = FALSE, warning = FALSE}
+# Import tracking data
+data <- read.csv("data/caledw-grid.csv")
+
+# Show first rows
+head(data)
+
+# set names of the environmental variables
+vars <- c("BAT", "SLP", "SST", "SAL", "MLD", "SSH", "CHL", "WSPEED")
+
+```
+
+### Exercise 2-1
+
+* How many individuals contain this dataset?
+* What is the current ratio between presence and absences?
+
+
+
+##  Random sample of absences to get a 1:1 ratio
+
+For machine-learning approaches it is recommended to use a 1:1 ratio
+
+```{r message = FALSE, warning = FALSE}
+# presences
+presences <- filter(data, occ==1)
+n_occ <- nrow(presences)
+
+# absences
+absences <- filter(data, occ==0)
+abs_prop <- nrow(presences)/nrow(absences)
+absences <- stratified(absences, c("organismID"), abs_prop)
+
+# combine presence-absences
+data <- bind_rows(presences, absences)
+
+# check number of occurrence per type
+table(data$occ)
+
+```
+
+## Exploratory data analysis
+
+
+First, we will check for missing data
+
+```{r message = FALSE, warning = FALSE}
+
+# Select columns with environmental data
+selEnv <- data %>% dplyr::select(vars)
+
+# missing data plot for environmental variables
+plot_Missing(selEnv)
+```
+### Exercise 2-2
+
+* Which variable contains missing data?
+What is the percentage of missing data for this variable?
+
+
+
+## Transform variables
+
+When environmental drivers present skewed distribution it is recommended to log-transform them. Here, we will show how to log-transform CHL. It is important to consider that this transformation has been conducted for predicting the model.
+
+```{r message = FALSE, warning = FALSE}
+# log-transform
+data$CHL <- log1p(data$CHL)
+
+# histogram of CHL
+hist(data$CHL)
+```
+
+## Collinearity of predictors
+
+Although collinearity between environmental variables does not affect machine-learning predictions, it can affect the interpretation of the model. Therefore, we will assess collinearity among variables calculating the Spearman pairwise correlation coefficient.
+
+```{r message = FALSE, warning = FALSE}
+# calculate correlations using Spearman and clustering analysis
+v <- as.formula(paste("~", vars, collapse="+"))
+plot(varclus(v, similarity = c("spearman"),data = data), cex =.8) # plot cluster
+```
+
+All predictors are uncorrelated (Spearman correlations <0.7), therefore none of them is discarded.
+
+## Explore environmental data differences between observed and simulated data
+
+```{r message = FALSE, warning = FALSE}
+## Explore distribution of data per variables in both observed and simulated
+
+# convert to data.frame
+data$type <- NA
+data$type[data$occ == 1] <- "Observed"
+data$type[data$occ == 0] <- "Simulated"
+
+# convert from wide to long format
+data_long <- reshape2::melt(data, id.vars=c("type"),measure.vars=vars)
+
+# set factors to control order of layers
+data_long$type <- factor(data_long$type, levels=c("Simulated", "Observed"))
+
+# plot
+ggplot(data_long, aes(x=value, fill=type)) +
+  geom_density(color="#e9ecef", alpha=0.5) +
+  facet_wrap(variable~., scales="free", ncol=4) +
+  labs(x = "", y = "Density") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())
+
+```
+
+
+## Split data into training and testing datasets
+
+Here, given that we have a small subset of data we will pick one individual randomly and will use as testing dataset. This means this individual will not be used to fit the model, and then we will test model predictions on this one.
+
+```{r message = FALSE, warning = FALSE}
+# set a seed to reproduce random number
+set.seed(134)
+
+# pick a random organism
+rn <- sample(data$organismID, 1)
+
+# split data
+train <- data %>% dplyr::filter(!organismID %in% rn)
+test <- data %>% dplyr::filter(organismID %in% rn)
+
+```
+
+
+## Model fiting
+
+We will use the `dismo` package to fit the models. In particular, we will fit a model with MaxEnt and another with Boosted Regression Trees.
+
+### MaxEnt
+
+Notes on MaxEnt installation [here](https://cran.r-project.org/web/packages/wallace/readme/README.html)
+
+http://www.java.com for information on installing Java.
+
+https://github.com/shandongfx/workshop_maxent_R/blob/master/code/Appendix1_case_study.md
+
+```{r message = FALSE, warning = FALSE}
+# Separate response variable and covariates
+response <- dplyr::select(train, occ)
+covar <- dplyr::select(train, vars)
+
+# Fit model
+me <- maxent(covar, response)
+
+```
+
+Plot variable contribution
+
+```{r message = FALSE, warning = FALSE}
+# Plot variable contribution
+plot(me)
+
+```
+
+
+Plot response curves
+
+```{r message = FALSE, warning = FALSE}
+# Plot response curves
+response(me)
+
+```
+
+### Boosted Regression Trees
+
+We used the “dismo” package in R to fit the BRT using a Bernoulli family, appropriate to the response variable of presence (1) and absence (0).
+
+We will use individual birds as folds in a leave-one-out cross-validation, meaning that all data from a given bird (both observed and simulated locations) were excluded from the training dataset and used to validate the model. 
+
+
+```{r message = FALSE, warning = FALSE}
+# set number of folds
+n.folds <- length(unique(train$organismID))
+
+# create folds
+set.seed(123)
+train$organismID <- as.factor(train$organismID)
+f <- fold(data = train, id_col = "organismID", method = "n_dist", k = n.folds)
+
+# prepare data
+train <- f %>%
+  dplyr::rename(fold = .folds) %>%
+  dplyr::mutate(fold = as.numeric(fold)) %>%
+  as.data.frame()
+
+```
+
+Fit the model using leave-one-out cross-validation. Note that a more detailed analysis should require the optimization of the different parameters: tree complexity, the learning rate (shrinkage) and the bag fraction (proportion of data randomly selected at each iteration).
+
+```{r message = FALSE, warning = FALSE}
+brt <- gbm.step(data=train, gbm.x = vars, gbm.y = "occ",
+                            family = "bernoulli", tree.complexity = 5,
+                            learning.rate = 0.001, bag.fraction = 0.6,
+                            fold.vector = train$fold,
+                            n.folds = length(unique(train$fold)))
+
+```
+Plot variable contribution
+
+```{r message = FALSE, warning = FALSE}
+summary(brt)
+```
+
+Plot variable response curves.
+
+```{r message = FALSE, warning = FALSE}
+gbm.plot(brt, n.plots=8, plot.layout=c(2, 4), write.title = FALSE)
+```
+
+In addition to the default function from `dismo`, ´ggplot2´ fans can found a great alternative using the  [ggBRT](https://github.com/JBjouffray/ggBRT) package.
+
+
+## Model prediction
+
+Import environmental data for a given day.
+
+```{r message = FALSE, warning = FALSE}
+# import environmental data stack
+env <- stack("data/20190625_enviro.grd")
+
+# plot environmental data
+plot(env)
+
+# remember to log-transform variables!
+env$CHL <- log1p(env$CHL)
+```
+
+Model prediction with MaxEnt
+
+```{r message = FALSE, warning = FALSE}
+# model prediction
+me_pred <- raster::predict(model = me, object = env, type = "response")
+
+# plot prediction
+plot(me_pred)
+```
+
+
+Model prediction with BRT
+
+```{r message = FALSE, warning = FALSE}
+# model prediction
+brt_pred <- raster::predict(model = brt, object = env, n.trees=brt$gbm.call$best.trees, type="response")
+
+# plot prediction
+plot(brt_pred)
+```
+
+
+
+## Model evaluation
+
+We will use the testing data to evaluate the models
+
+
+We will start with MaxEnt
+
+```{r message = FALSE, warning = FALSE}
+## predict on the testing dataset
+test$me_pred <- dismo::predict(x = test, object = me, type = "response")
+
+```
+
+Unlike BRT, MaxEnt is sensitive to missing data. Given there are two observations with missing CHL, there is an error. We will create a new subset without these two observations.
+
+
+```{r message = FALSE, warning = FALSE}
+# subset test
+test <- filter(test, !is.na(CHL))
+
+## predict on the testing dataset
+test$me_pred <- dismo::predict(x = test, object = me, type = "response")
+
+# evaluate
+e <- evaluate(p = as.numeric(test$me_pred[test$occ == 1]),
+              a = as.numeric(test$me_pred[test$occ == 0]))
+e
+
+# plot evaluation results
+par(mfrow=c(1, 3))
+plot(e, 'ROC')
+density(e)
+boxplot(e, col=c('blue', 'red'))
+
+
+```
+
+
+
+Then, we will follow with BRT. Note that the code is slightly difference, since we need to define the number of trees used for the BRT.
+
+
+```{r message = FALSE, warning = FALSE}
+## predict on the testing dataset
+test$brt_pred <- gbm::predict.gbm(newdata = test, object = brt, n.trees=brt$gbm.call$best.trees, type = "response")
+
+# evaluate
+e <- evaluate(p = as.numeric(test$brt_pred[test$occ == 1]),
+              a = as.numeric(test$brt_pred[test$occ == 0]))
+e
+
+# plot evaluation results
+par(mfrow=c(1, 3))
+plot(e, 'ROC')
+density(e)
+boxplot(e, col=c('blue', 'red'))
+
+```
+
+* Which of the two methods has performed better according to the AUC criteria?
+
+
+
+# Accessibility models
+
+The habitat modeling approach estimates habitat suitability of a given location based on its environmental characteristics. However, it does not consider the accessibility of a given cell. This is particularly important for central place foragers that get back to their colonies.
+
+## Accessibility to the colony
+
+Here, we will use a generated map of the distance to the colony. To know how to create you own map, you can check the code available from a previous workhop [here](https://github.com/dmarch/ub-rworkshop2021)
+
+```{r message = FALSE, warning = FALSE}
+# import distance to colony map
+dcol <- raster("data/D2COL.tif")
+
+# plot prediction
+plot(dcol)
+```
+
+Then, we create a map of presence/absence. In this case, presence correspond to both observed and pseudo-abansence data
+
+```{r message = FALSE, warning = FALSE}
+  ## Create an absence map
+  rabs <- dcol
+  rabs[!is.na(rabs)] <- 0
+  
+  ## Create a presence map with both observed and simulated trips
+  rpres <- rasterize(cbind(train$longitude, train$latitude), dcol)
+  rpres <- rpres/rpres
+  
+  ## Create presence/absence
+  rpa <- sum(rpres, rabs, na.rm=TRUE)
+  rpa <- raster::mask(rpa, rabs)
+  names(rpa) <- "OCC"
+  plot(rpa)
+  
+  ## convert to data.frame
+  s <- stack(rpa, dcol)
+  distdf <- data.frame(na.omit(values(s)))
+```
+
+
+## Model fitting
+
+We will fitted binomial model with a smooth, monotonic decreasing constraint using the “scam” R package, under the assumption that accessibility should decrease with the distance to the colony.
+
+```{r message = FALSE, warning = FALSE}
+# Fitted binomial models with a smooth, monotonic decreasing constraint (see Hindell 2020)
+scamMod <- scam(formula = OCC ~ s(D2COL, bs="mpd"),  # Monotone decreasing P-splines
+                family = binomial,
+                data = distdf)
+```
+
+
+Predict model
+
+```{r message = FALSE, warning = FALSE}
+# predict model
+access_pred <- predict(dcol, scamMod, type = "response")
+
+# plot prediction
+plot(access_pred)
+```
+
+## Combining habitat and accessibility models
+
+Combine MaxEnt prediction with accessibility
+
+```{r message = FALSE, warning = FALSE}
+# calculate product with accessibility
+me_acc_pred <- me_pred * access_pred
+
+# plot prediction
+plot(me_acc_pred)
+
+```
+
+
+### Exercise 2-3
+
+* Combine accessibility with the prediction of BRT.
+* Evaluate the predictions of BRT and MaxEnt together with accessibility on the testing dataset. Have we improved the predictions?
+
+
+
