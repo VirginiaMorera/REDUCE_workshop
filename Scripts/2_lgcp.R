@@ -31,7 +31,8 @@ ggplot() +
 ## 1.3 Sampling locations ####
 names(gorillas_sf$plotsample)
 
-ggplot() + 
+ggplot() +
+  
   geom_sf(data = gorillas_sf$boundary, fill = "lightgray") +
   geom_sf(data = gorillas_sf$nests) + 
   geom_sf(data = gorillas_sf$plotsample$plots, fill = NA, col = "red") +
@@ -117,7 +118,8 @@ newdf <- fm_pixels(mesh_better,
                    format = "sf")
 
 ### Predict ####
-pred1 <- predict(m1, newdata = newdf, 
+pred1 <- predict(m1, 
+                 newdata = newdf, 
                  ~ exp(Intercept + Eff.elevation))
 
 ggplot() + 
@@ -139,6 +141,7 @@ m1.2 <- bru(components = form1,
           domain =  list(geometry = mesh_better))
 
 summary(m1.2)
+summary(m1)
 
 pred1.2 <- predict(m1.2, newdata = newdf, 
                    ~ exp(Intercept + 
@@ -166,7 +169,7 @@ ggplot() +
 ## 3.3 Model with factor ####
 
 form2 <- geometry ~  Intercept(1)  +
-  Eff.elevation(covars$elev, model = "linear") + 
+  # Eff.elevation(covars$elev, model = "linear") + 
   Eff.vegetation(covars$vegetation, model = "factor")
 
 m2 <- bru(components = form2,
@@ -179,14 +182,14 @@ summary(m2)
 
 pred2 <- predict(m2, newdata = newdf, 
                  ~ exp(Intercept + 
-                         Eff.elevation + 
+                         # Eff.elevatio}n + 
                          Eff.vegetation))
 
 ggplot() + 
   gg(data = pred2, aes(fill = q0.5), geom = "tile") +
   scale_fill_viridis_c() +
-  geom_sf(data = gorillas_sf$nests) +
-  geom_sf(data = gorillas_sf$plotsample$nests, col = "orange") +
+  # geom_sf(data = gorillas_sf$nests) +
+  # geom_sf(data = gorillas_sf$plotsample$nests, col = "orange") +
   theme_bw()
 
 ## 3.3 Model with  spde ####
@@ -224,7 +227,7 @@ pred3 <- predict(m3, newdata = newdf,
 ggplot() + 
   gg(data = pred3, aes(fill = q0.5), geom = "tile") +
   scale_fill_viridis_c() +
-  geom_sf(data = gorillas_sf$nests) +
+  # geom_sf(data = gorillas_<sf$nests) +
   geom_sf(data = gorillas_sf$plotsample$nests, col = "orange") +
   theme_bw()
 
@@ -317,7 +320,8 @@ eval.elev <- ggplot(elev.pred) +
 
 # count predicted number of nests
 
-pred_nests <- predict(m4, fm_int(mesh_better, gorillas_sf$boundary),
+pred_nests <- predict(m4, 
+                      fm_int(mesh_better, gorillas_sf$boundary),
                       ~ sum(weight*exp(Intercept + 
                               Eff.elevation +
                               # Eff.vegetation +
