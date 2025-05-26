@@ -105,6 +105,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#maxent" id="toc-maxent" class="nav-link" data-scroll-target="#maxent"><span class="header-section-number">3.8.1</span> MaxEnt</a></li>
   <li><a href="#boosted-regression-trees" id="toc-boosted-regression-trees" class="nav-link" data-scroll-target="#boosted-regression-trees"><span class="header-section-number">3.8.2</span> Boosted Regression Trees</a></li>
+  <li><a href="#bayesian-additive-regression-trees" id="toc-bayesian-additive-regression-trees" class="nav-link" data-scroll-target="#bayesian-additive-regression-trees"><span class="header-section-number">3.8.3</span> Bayesian Additive Regression Trees</a></li>
   </ul></li>
   <li><a href="#model-prediction" id="toc-model-prediction" class="nav-link" data-scroll-target="#model-prediction"><span class="header-section-number">3.9</span> Model prediction</a></li>
   <li><a href="#model-evaluation" id="toc-model-evaluation" class="nav-link" data-scroll-target="#model-evaluation"><span class="header-section-number">3.10</span> Model evaluation</a></li>
@@ -181,8 +182,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>Load all the packages required</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(<span class="st">"raster"</span>, <span class="st">"sf"</span>, <span class="st">"lubridate"</span>, <span class="st">"ggplot2"</span>, <span class="st">"rnaturalearth"</span>, <span class="st">"rnaturalearthdata"</span>, <span class="st">"dplyr"</span>, <span class="st">"move"</span>, <span class="st">"data.table"</span>, <span class="st">"splitstackshape"</span>, <span class="st">"Hmisc"</span>, <span class="st">"dismo"</span>, <span class="st">"scam"</span>, <span class="st">"tidyr"</span>, <span class="st">"egg"</span>, <span class="st">"gifski"</span>, <span class="st">"av"</span>, <span class="st">"gganimate"</span>, <span class="st">"foreach"</span>, <span class="st">"stringr"</span>, <span class="st">"groupdata2"</span>,  <span class="st">"reshape2"</span>, <span class="st">"gbm"</span>, <span class="st">"devtools"</span>, <span class="st">"rJava"</span>, <span class="st">"animalsensor"</span>, <span class="st">"availability"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(<span class="st">"raster"</span>, <span class="st">"sf"</span>, <span class="st">"lubridate"</span>, <span class="st">"ggplot2"</span>, <span class="st">"rnaturalearth"</span>, <span class="st">"rnaturalearthdata"</span>, <span class="st">"dplyr"</span>, <span class="st">"move"</span>, <span class="st">"data.table"</span>, <span class="st">"splitstackshape"</span>, <span class="st">"Hmisc"</span>, <span class="st">"dismo"</span>, <span class="st">"scam"</span>, <span class="st">"tidyr"</span>, <span class="st">"egg"</span>, <span class="st">"gifski"</span>, <span class="st">"av"</span>, <span class="st">"gganimate"</span>, <span class="st">"foreach"</span>, <span class="st">"stringr"</span>, <span class="st">"groupdata2"</span>,  <span class="st">"reshape2"</span>, <span class="st">"gbm"</span>, <span class="st">"devtools"</span>, <span class="st">"rJava"</span>, <span class="st">"animalsensor"</span>, <span class="st">"availability"</span>, <span class="st">"embarcadero"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<!-- library(embarcadero) -->
+<!-- library(tidyverse) -->
+<!-- library(sf) -->
+<!-- library(terra) -->
+<!-- library(predicts) -->
 <ol start="2" type="1">
 <li>Source custom functions</li>
 </ol>
@@ -377,35 +383,86 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>In addition to the default function from <code>dismo</code>, ´ggplot2´ fans can found a great alternative using the <a href="https://github.com/JBjouffray/ggBRT">ggBRT</a> package.</p>
 </section>
+<section id="bayesian-additive-regression-trees" class="level3" data-number="3.8.3">
+<h3 data-number="3.8.3" class="anchored" data-anchor-id="bayesian-additive-regression-trees"><span class="header-section-number">3.8.3</span> Bayesian Additive Regression Trees</h3>
+<p>This requires de use of <code>embarcadero</code> R package. Note that <code>ri.data</code> is commented as seems to not be working correctly. This argument is intended to incorporate a random effect term in the model. Check ?dbarts::rbart_vi for more details about this extension.</p>
+<p>Consider checking the following references: * Maia et al.&nbsp;2024: https://doi.org/10.1016/j.csda.2023.107858 * BART Workshop: https://github.com/JBYoderLab/BART_workshop</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fit BART model with random effects</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>bart <span class="ot">&lt;-</span> <span class="fu">bart.step</span>(<span class="at">x.data =</span> train[,vars],</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">y.data =</span> train[,<span class="st">"occ"</span>],</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>                <span class="co">#ri.data = train[,"organismID"], # random effects (not working)</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>                <span class="at">full =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>                <span class="at">quiet =</span> F, </span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>                <span class="at">iter.step =</span> <span class="dv">10</span>, </span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>                <span class="at">iter.plot =</span> <span class="dv">10</span>, </span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>                <span class="at">tree.step =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Note that the function return mutliple information: in the console you can main outputs, including AUC and recommended threshold. Then, further information is provided for variable selection, and variable importance for each selected predictor.</p>
+<p>Print a summary of the model</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model summary</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(bart)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Variable importance can be plot and extracted</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># variable importance</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">varimp</span>(bart, <span class="at">plots =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Finally, you can also visualize the partial effect plots for each environmental variable. This step takes time!</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># partial effects plot</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>peff <span class="ot">&lt;-</span> <span class="fu">partial</span>(bart,</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">trace =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>                <span class="at">ci =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>                <span class="at">equal =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>                <span class="at">smooth =</span> <span class="dv">10</span>, </span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>                <span class="at">panels =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>peff</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
 </section>
 <section id="model-prediction" class="level2" data-number="3.9">
 <h2 data-number="3.9" class="anchored" data-anchor-id="model-prediction"><span class="header-section-number">3.9</span> Model prediction</h2>
 <p>Import environmental data for a given day.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import environmental data stack</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>env <span class="ot">&lt;-</span> <span class="fu">stack</span>(<span class="st">"data/20190625_enviro.grd"</span>)</span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot environmental data</span></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(env)</span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="co"># remember to log-transform variables!</span></span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>env<span class="sc">$</span>CHL <span class="ot">&lt;-</span> <span class="fu">log1p</span>(env<span class="sc">$</span>CHL)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import environmental data stack</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>env <span class="ot">&lt;-</span> <span class="fu">stack</span>(<span class="st">"data/20190625_enviro.grd"</span>)</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot environmental data</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(env)</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="co"># remember to log-transform variables!</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>env<span class="sc">$</span>CHL <span class="ot">&lt;-</span> <span class="fu">log1p</span>(env<span class="sc">$</span>CHL)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Model prediction with MaxEnt</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model prediction</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>me_pred <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(<span class="at">model =</span> me, <span class="at">object =</span> env, <span class="at">type =</span> <span class="st">"response"</span>)</span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(me_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model prediction</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>me_pred <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(<span class="at">model =</span> me, <span class="at">object =</span> env, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(me_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Model prediction with BRT</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model prediction</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>brt_pred <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(<span class="at">model =</span> brt, <span class="at">object =</span> env, <span class="at">n.trees=</span>brt<span class="sc">$</span>gbm.call<span class="sc">$</span>best.trees, <span class="at">type=</span><span class="st">"response"</span>)</span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(brt_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model prediction</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>brt_pred <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">predict</span>(<span class="at">model =</span> brt, <span class="at">object =</span> env, <span class="at">n.trees=</span>brt<span class="sc">$</span>gbm.call<span class="sc">$</span>best.trees, <span class="at">type=</span><span class="st">"response"</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(brt_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Model prediction with BART</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># model prediction</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>bart_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(<span class="at">object =</span> bart,</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">x.layers =</span> env,</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>                      <span class="at">quantiles =</span><span class="fu">c</span>(<span class="fl">0.025</span>, <span class="fl">0.975</span>),</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>                      <span class="at">splitby =</span> <span class="dv">20</span>,</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>                      <span class="at">quiet =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(bart_pred) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Mean"</span>, <span class="st">"q2.5%"</span>, <span class="st">"q97.5%"</span>)</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bart_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="model-evaluation" class="level2" data-number="3.10">
@@ -413,43 +470,43 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>We will use the testing data to evaluate the models</p>
 <p>We will start with MaxEnt</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>me_pred <span class="ot">&lt;-</span> dismo<span class="sc">::</span><span class="fu">predict</span>(<span class="at">x =</span> test, <span class="at">object =</span> me, <span class="at">type =</span> <span class="st">"response"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>me_pred <span class="ot">&lt;-</span> dismo<span class="sc">::</span><span class="fu">predict</span>(<span class="at">x =</span> test, <span class="at">object =</span> me, <span class="at">type =</span> <span class="st">"response"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Unlike BRT, MaxEnt is sensitive to missing data. Given there are two observations with missing CHL, there is an error. We will create a new subset without these two observations.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># subset test</span></span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>test <span class="ot">&lt;-</span> <span class="fu">filter</span>(test, <span class="sc">!</span><span class="fu">is.na</span>(CHL))</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>me_pred <span class="ot">&lt;-</span> dismo<span class="sc">::</span><span class="fu">predict</span>(<span class="at">x =</span> test, <span class="at">object =</span> me, <span class="at">type =</span> <span class="st">"response"</span>)</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate</span></span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fu">evaluate</span>(<span class="at">p =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>me_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">1</span>]),</span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>              <span class="at">a =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>me_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">0</span>]))</span>
-<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>e</span>
-<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="co"># plot evaluation results</span></span>
-<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>))</span>
-<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(e, <span class="st">'ROC'</span>)</span>
-<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="fu">density</span>(e)</span>
-<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(e, <span class="at">col=</span><span class="fu">c</span>(<span class="st">'blue'</span>, <span class="st">'red'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># subset test</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>test <span class="ot">&lt;-</span> <span class="fu">filter</span>(test, <span class="sc">!</span><span class="fu">is.na</span>(CHL))</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>me_pred <span class="ot">&lt;-</span> dismo<span class="sc">::</span><span class="fu">predict</span>(<span class="at">x =</span> test, <span class="at">object =</span> me, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fu">evaluate</span>(<span class="at">p =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>me_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">1</span>]),</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>              <span class="at">a =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>me_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">0</span>]))</span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>e</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a><span class="co"># plot evaluation results</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>))</span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(e, <span class="st">'ROC'</span>)</span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a><span class="fu">density</span>(e)</span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(e, <span class="at">col=</span><span class="fu">c</span>(<span class="st">'blue'</span>, <span class="st">'red'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Then, we will follow with BRT. Note that the code is slightly difference, since we need to define the number of trees used for the BRT.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>brt_pred <span class="ot">&lt;-</span> gbm<span class="sc">::</span><span class="fu">predict.gbm</span>(<span class="at">newdata =</span> test, <span class="at">object =</span> brt, <span class="at">n.trees=</span>brt<span class="sc">$</span>gbm.call<span class="sc">$</span>best.trees, <span class="at">type =</span> <span class="st">"response"</span>)</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate</span></span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fu">evaluate</span>(<span class="at">p =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>brt_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">1</span>]),</span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>              <span class="at">a =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>brt_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">0</span>]))</span>
-<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>e</span>
-<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a><span class="co"># plot evaluation results</span></span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>))</span>
-<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(e, <span class="st">'ROC'</span>)</span>
-<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a><span class="fu">density</span>(e)</span>
-<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(e, <span class="at">col=</span><span class="fu">c</span>(<span class="st">'blue'</span>, <span class="st">'red'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="do">## predict on the testing dataset</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>test<span class="sc">$</span>brt_pred <span class="ot">&lt;-</span> gbm<span class="sc">::</span><span class="fu">predict.gbm</span>(<span class="at">newdata =</span> test, <span class="at">object =</span> brt, <span class="at">n.trees=</span>brt<span class="sc">$</span>gbm.call<span class="sc">$</span>best.trees, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>e <span class="ot">&lt;-</span> <span class="fu">evaluate</span>(<span class="at">p =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>brt_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">1</span>]),</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>              <span class="at">a =</span> <span class="fu">as.numeric</span>(test<span class="sc">$</span>brt_pred[test<span class="sc">$</span>occ <span class="sc">==</span> <span class="dv">0</span>]))</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>e</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a><span class="co"># plot evaluation results</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">3</span>))</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(e, <span class="st">'ROC'</span>)</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a><span class="fu">density</span>(e)</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(e, <span class="at">col=</span><span class="fu">c</span>(<span class="st">'blue'</span>, <span class="st">'red'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <ul>
 <li>Which of the two methods has performed better according to the AUC criteria?</li>
@@ -463,60 +520,60 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 data-number="4.1" class="anchored" data-anchor-id="accessibility-to-the-colony"><span class="header-section-number">4.1</span> Accessibility to the colony</h2>
 <p>Here, we will use a generated map of the distance to the colony. To know how to create you own map, you can check the code available from a previous workhop <a href="https://github.com/dmarch/ub-rworkshop2021">here</a></p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import distance to colony map</span></span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>dcol <span class="ot">&lt;-</span> <span class="fu">raster</span>(<span class="st">"data/D2COL.tif"</span>)</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(dcol)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># import distance to colony map</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>dcol <span class="ot">&lt;-</span> <span class="fu">raster</span>(<span class="st">"data/D2COL.tif"</span>)</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(dcol)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Then, we create a map of presence/absence. In this case, presence correspond to both observed and pseudo-abansence data</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create an absence map</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  rabs <span class="ot">&lt;-</span> dcol</span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  rabs[<span class="sc">!</span><span class="fu">is.na</span>(rabs)] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create a presence map with both observed and simulated trips</span></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  rpres <span class="ot">&lt;-</span> <span class="fu">rasterize</span>(<span class="fu">cbind</span>(train<span class="sc">$</span>longitude, train<span class="sc">$</span>latitude), dcol)</span>
-<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>  rpres <span class="ot">&lt;-</span> rpres<span class="sc">/</span>rpres</span>
-<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create presence/absence</span></span>
-<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  rpa <span class="ot">&lt;-</span> <span class="fu">sum</span>(rpres, rabs, <span class="at">na.rm=</span><span class="cn">TRUE</span>)</span>
-<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>  rpa <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">mask</span>(rpa, rabs)</span>
-<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">names</span>(rpa) <span class="ot">&lt;-</span> <span class="st">"OCC"</span></span>
-<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(rpa)</span>
-<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>  <span class="do">## convert to data.frame</span></span>
-<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">stack</span>(rpa, dcol)</span>
-<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>  distdf <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="fu">na.omit</span>(<span class="fu">values</span>(s)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create an absence map</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  rabs <span class="ot">&lt;-</span> dcol</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  rabs[<span class="sc">!</span><span class="fu">is.na</span>(rabs)] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create a presence map with both observed and simulated trips</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>  rpres <span class="ot">&lt;-</span> <span class="fu">rasterize</span>(<span class="fu">cbind</span>(train<span class="sc">$</span>longitude, train<span class="sc">$</span>latitude), dcol)</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>  rpres <span class="ot">&lt;-</span> rpres<span class="sc">/</span>rpres</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>  <span class="do">## Create presence/absence</span></span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>  rpa <span class="ot">&lt;-</span> <span class="fu">sum</span>(rpres, rabs, <span class="at">na.rm=</span><span class="cn">TRUE</span>)</span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>  rpa <span class="ot">&lt;-</span> raster<span class="sc">::</span><span class="fu">mask</span>(rpa, rabs)</span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">names</span>(rpa) <span class="ot">&lt;-</span> <span class="st">"OCC"</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot</span>(rpa)</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb29-15"><a href="#cb29-15" aria-hidden="true" tabindex="-1"></a>  <span class="do">## convert to data.frame</span></span>
+<span id="cb29-16"><a href="#cb29-16" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">stack</span>(rpa, dcol)</span>
+<span id="cb29-17"><a href="#cb29-17" aria-hidden="true" tabindex="-1"></a>  distdf <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="fu">na.omit</span>(<span class="fu">values</span>(s)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="model-fitting" class="level2" data-number="4.2">
 <h2 data-number="4.2" class="anchored" data-anchor-id="model-fitting"><span class="header-section-number">4.2</span> Model fitting</h2>
 <p>We will fitted binomial model with a smooth, monotonic decreasing constraint using the “scam” R package, under the assumption that accessibility should decrease with the distance to the colony.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fitted binomial models with a smooth, monotonic decreasing constraint (see Hindell 2020)</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>scamMod <span class="ot">&lt;-</span> <span class="fu">scam</span>(<span class="at">formula =</span> OCC <span class="sc">~</span> <span class="fu">s</span>(D2COL, <span class="at">bs=</span><span class="st">"mpd"</span>),  <span class="co"># Monotone decreasing P-splines</span></span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">family =</span> binomial,</span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>                <span class="at">data =</span> distdf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fitted binomial models with a smooth, monotonic decreasing constraint (see Hindell 2020)</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>scamMod <span class="ot">&lt;-</span> <span class="fu">scam</span>(<span class="at">formula =</span> OCC <span class="sc">~</span> <span class="fu">s</span>(D2COL, <span class="at">bs=</span><span class="st">"mpd"</span>),  <span class="co"># Monotone decreasing P-splines</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">family =</span> binomial,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>                <span class="at">data =</span> distdf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Predict model</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># predict model</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>access_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(dcol, scamMod, <span class="at">type =</span> <span class="st">"response"</span>)</span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(access_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># predict model</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>access_pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(dcol, scamMod, <span class="at">type =</span> <span class="st">"response"</span>)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(access_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="combining-habitat-and-accessibility-models" class="level2" data-number="4.3">
 <h2 data-number="4.3" class="anchored" data-anchor-id="combining-habitat-and-accessibility-models"><span class="header-section-number">4.3</span> Combining habitat and accessibility models</h2>
 <p>Combine MaxEnt prediction with accessibility</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calculate product with accessibility</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>me_acc_pred <span class="ot">&lt;-</span> me_pred <span class="sc">*</span> access_pred</span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(me_acc_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calculate product with accessibility</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>me_acc_pred <span class="ot">&lt;-</span> me_pred <span class="sc">*</span> access_pred</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="co"># plot prediction</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(me_acc_pred)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <section id="exercise-2-3" class="level3" data-number="4.3.1">
 <h3 data-number="4.3.1" class="anchored" data-anchor-id="exercise-2-3"><span class="header-section-number">4.3.1</span> Exercise 2-3</h3>

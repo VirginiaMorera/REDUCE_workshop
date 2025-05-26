@@ -46,8 +46,16 @@ If you have completed part 1, you will already have the system ready for this pa
 1. Load all the packages required
 
 ```{r message = FALSE, warning = FALSE}
-pacman::p_load("raster", "sf", "lubridate", "ggplot2", "rnaturalearth", "rnaturalearthdata", "dplyr", "move", "data.table", "splitstackshape", "Hmisc", "dismo", "scam", "tidyr", "egg", "gifski", "av", "gganimate", "foreach", "stringr", "groupdata2",  "reshape2", "gbm", "devtools", "rJava", "animalsensor", "availability")
+pacman::p_load("raster", "sf", "lubridate", "ggplot2", "rnaturalearth", "rnaturalearthdata", "dplyr", "move", "data.table", "splitstackshape", "Hmisc", "dismo", "scam", "tidyr", "egg", "gifski", "av", "gganimate", "foreach", "stringr", "groupdata2",  "reshape2", "gbm", "devtools", "rJava", "animalsensor", "availability", "embarcadero")
 ```
+
+
+<!-- library(embarcadero) -->
+<!-- library(tidyverse) -->
+<!-- library(sf) -->
+<!-- library(terra) -->
+<!-- library(predicts) -->
+
 
 2. Source custom functions
 
@@ -285,6 +293,62 @@ gbm.plot(brt, n.plots=8, plot.layout=c(2, 4), write.title = FALSE)
 In addition to the default function from `dismo`, ´ggplot2´ fans can found a great alternative using the  [ggBRT](https://github.com/JBjouffray/ggBRT) package.
 
 
+
+
+### Bayesian Additive Regression Trees
+
+This requires de use of `embarcadero` R package. Note that `ri.data` is commented as seems to not be working correctly. This argument is intended to incorporate a random effect term in the model. Check ?dbarts::rbart_vi for more details about this extension.
+
+Consider checking the following references:
+* Maia et al. 2024: https://doi.org/10.1016/j.csda.2023.107858
+* BART Workshop: https://github.com/JBYoderLab/BART_workshop
+
+
+
+```{r}
+# Fit BART model with random effects
+bart <- bart.step(x.data = train[,vars],
+                y.data = train[,"occ"],
+                #ri.data = train[,"organismID"], # random effects (not working)
+                full = TRUE,
+                quiet = F, 
+                iter.step = 10, 
+                iter.plot = 10, 
+                tree.step = 2)
+```
+Note that the function return mutliple information: in the console you can main outputs, including AUC and recommended threshold. Then, further information is provided for variable selection, and variable importance for each selected predictor.
+
+
+Print a summary of the model
+```{r}
+# model summary
+summary(bart)
+```
+
+Variable importance can be plot and extracted
+```{r}
+# variable importance
+varimp(bart, plots = TRUE)
+```
+
+Finally, you can also visualize the partial effect plots for each environmental variable. This step takes time!
+
+```{r}
+# partial effects plot
+peff <- partial(bart,
+                trace = FALSE,
+                ci = TRUE,
+                equal = TRUE,
+                smooth = 10, 
+                panels = TRUE)
+peff
+```
+
+
+
+
+
+
 ## Model prediction
 
 Import environmental data for a given day.
@@ -320,6 +384,23 @@ brt_pred <- raster::predict(model = brt, object = env, n.trees=brt$gbm.call$best
 # plot prediction
 plot(brt_pred)
 ```
+
+
+Model prediction with BART
+
+```{r}
+# model prediction
+bart_pred <- predict(object = bart,
+                      x.layers = env,
+                      quantiles =c(0.025, 0.975),
+                      splitby = 20,
+                      quiet = TRUE)
+
+# plot prediction
+names(bart_pred) <- c("Mean", "q2.5%", "q97.5%")
+plot(bart_pred)
+```
+
 
 
 
